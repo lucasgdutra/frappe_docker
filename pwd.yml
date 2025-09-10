@@ -2,6 +2,10 @@ version: "3"
 
 services:
   backend:
+    depends_on:
+      - db
+      - redis-queue
+      - redis-cache
     image: frappe/erpnext:v15.78.1
     networks:
       - frappe_network
@@ -18,6 +22,8 @@ services:
       MARIADB_ROOT_PASSWORD: ${MYSQL_ROOT_PASSWORD:-admin}
 
   configurator:
+    depends_on:
+      - backend
     image: frappe/erpnext:v15.78.1
     networks:
       - frappe_network
@@ -47,6 +53,8 @@ services:
       - logs:/home/frappe/frappe-bench/logs
 
   create-site:
+    depends_on:
+      - configurator
     image: frappe/erpnext:v15.78.1
     networks:
       - frappe_network
@@ -67,7 +75,7 @@ services:
         export start=`date +%s`;
         until [[ -n `grep -hs ^ sites/common_site_config.json | jq -r ".db_host // empty"` ]] && \
           [[ -n `grep -hs ^ sites/common_site_config.json | jq -r ".redis_cache // empty"` ]] && \
-          [[ -n `grep -hs ^ sites/common_site_config.json | jq -r ".redis_queue // empty"` ]];
+          [[ -n `grep -hs ^ sites/common_site_config.json | jq -r ".redis_queue // empty"` ]]
         do
           echo "Waiting for sites/common_site_config.json to be created";
           sleep 5;
@@ -107,6 +115,7 @@ services:
       - frappe_network
     depends_on:
       - websocket
+      - backend
     deploy:
       restart_policy:
         condition: on-failure
@@ -128,6 +137,9 @@ services:
       - "8080"
 
   queue-long:
+    depends_on:
+      - redis-queue
+      - backend
     image: frappe/erpnext:v15.78.1
     networks:
       - frappe_network
@@ -144,6 +156,9 @@ services:
       - logs:/home/frappe/frappe-bench/logs
 
   queue-short:
+    depends_on:
+      - redis-queue
+      - backend
     image: frappe/erpnext:v15.78.1
     networks:
       - frappe_network
@@ -178,6 +193,8 @@ services:
         condition: on-failure
 
   scheduler:
+    depends_on:
+      - backend
     image: frappe/erpnext:v15.78.1
     networks:
       - frappe_network
@@ -192,6 +209,9 @@ services:
       - logs:/home/frappe/frappe-bench/logs
 
   websocket:
+    depends_on:
+      - redis-queue
+      - backend
     image: frappe/erpnext:v15.78.1
     networks:
       - frappe_network
